@@ -71,21 +71,28 @@ class FourOscillators:
         return res
 
     def funcF(self, psis):
-        psis = list(psis)
-        if psis[2] > psis[3]:
-            return 1.0
-        sys = self.getSystem(psis)
+        psisx = [0., 0., psis[0], psis[1]]
+        sys = self.getSystem(psisx)
         Fx = sys[2] ** 2 + sys[3] ** 2
-        if Fx < 10**(-10):
-            return Fx
-        else:
-            return 1.0
+        return Fx
+
+    def ineqConstrF(self, psis):
+        psisx = [0., 0., psis[0], psis[1]]
+        sys = self.getSystem(psisx)
+        Fx = sys[2] ** 2 + sys[3] ** 2
+        return -Fx + 10**(-10)
+
+    def ineqConstrF2(self, psis):
+        psisx = [0., 0., psis[0], psis[1]]
+        sys = self.getSystem(psisx)
+        Fx = sys[2] ** 2 + sys[3] ** 2
+        return Fx
 
     def searchABCD(self, M):
-        psisx1 = [0., 0., M[0] + 0.001, M[1]]
-        psisy1 = [0., 0., M[0], M[1] + 0.001]
-        psisx2 = [0., 0., M[0] - 0.001, M[1]]
-        psisy2 = [0., 0., M[0], M[1] - 0.001]
+        psisx1 = [0., 0., M[0], M[1] + 0.001]
+        psisy1 = [0., 0., M[0] + 0.001, M[1]]
+        psisx2 = [0., 0., M[0], M[1] - 0.001]
+        psisy2 = [0., 0., M[0] - 0.001, M[1]]
         sys1 = self.getSystem(psisx1)
         sys2 = self.getSystem(psisy1)
         sys3 = self.getSystem(psisx2)
@@ -99,21 +106,23 @@ class FourOscillators:
         return [a, b, c, d]
 
     def searchLambdas(self, a, b, c, d):
-        D = (a + d)**2 / 4 - np.linalg.det([[a, b], [c, d]])
+        delta = np.linalg.det([[a, b], [c, d]])
+        sigma = -(a + d)
+        D = sigma**2 / 4 - delta
         if D < 0:
             return [-1000000, -1000000]
-        lambda1 = (a + d) / 2 + math.sqrt(D)
-        lambda2 = (a + d) / 2 - math.sqrt(D)
+        lambda1 = -sigma / 2 + math.sqrt(D)
+        lambda2 = -sigma / 2 - math.sqrt(D)
         if lambda1 * lambda2 >= 0:
             return [-1000000, -1000000]
         return [lambda1, lambda2]
 
     def searchGammas(self, lambdas, M):
         gammas = [0., 0.]
-        psisx1 = [0., 0., M[0] + 0.001, M[1]]
-        psisy1 = [0., 0., M[0], M[1] + 0.001]
-        psisx2 = [0., 0., M[0] - 0.001, M[1]]
-        psisy2 = [0., 0., M[0], M[1] - 0.001]
+        psisx1 = [0., 0., M[0], M[1] + 0.001]
+        psisy1 = [0., 0., M[0] + 0.001, M[1]]
+        psisx2 = [0., 0., M[0], M[1] - 0.001]
+        psisy2 = [0., 0., M[0] - 0.001, M[1]]
         sys1 = self.getSystem(psisx1)
         sys2 = self.getSystem(psisy1)
         sys3 = self.getSystem(psisx2)
@@ -253,6 +262,16 @@ def checkSystemParam(paramE, paramX):
         res = True
     return res
 
+def ineqConstr(psis):
+    psis = list(psis)
+    return psis[1] - psis[0]
+
+def funcF(psis, *args):
+    psisx = [0., 0., psis[0], psis[1]]
+    system = FourOscillators(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
+    sys = system.getSystem(psisx)
+    Fx = sys[2] ** 2 + sys[3] ** 2
+    return Fx
 
 #def makePictureParam(startX, stopX):
 #    x = []
@@ -272,7 +291,19 @@ def checkSystemParam(paramE, paramX):
 
 
 fig, axs = plt.subplots()
-system = FourOscillators(1.8, 0.6, 1.7, 0.3, 1.5, 0.1, 1.4, 0.9, 1.2, 0.3, 2.4)
-#res = shgo(system.funcF, [(0, 0), (0, 0), (0, 2 * math.pi), (0, 2 * math.pi)])
-system.searchLambdas([1.2, 3.5])
+args = (1.8, 0.6, 1.7, 0.3, 1.5, 0.1, 1.4, 0.9, 1.2, 0.3, 2.4)
+system = FourOscillators(0., -4.6, -4.6, -4.6, -4.6, -4.6, 3.4, 3.4, 3.4, 3.4, 3.4)
+constraint1 = {'type': 'ineq', 'fun': ineqConstr}
+constraint2 = {'type': 'ineq', 'fun': system.ineqConstrF}
+cons = ({'type': 'ineq', 'fun': ineqConstr},
+        {'type': 'ineq', 'fun': system.ineqConstrF},
+        {'type': 'ineq', 'fun': system.ineqConstrF2})
+pi2 = 2 * math.pi
+bounds = ((0, pi2), (0, pi2))
+res = shgo(system.funcF, bounds=bounds, n=64, iters=3, constraints=cons, options={'minim_every_item': 'True'})
+ABCD = system.searchABCD(res.xl[1])
+lambdas = system.searchLambdas(ABCD[0], ABCD[1], ABCD[2], ABCD[3])
+gammas = system.searchGammas(lambdas, res.xl[1])
+startX = system.searchSepStart(gammas, res.xl[1], 0.5)
+
 system
