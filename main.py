@@ -228,7 +228,7 @@ class FourOscillators:
             abcd = self.searchABCD(M)
             lambdas = self.searchLambdas(abcd[0], abcd[1], abcd[2], abcd[3])
             gammas = self.searchGammas(lambdas, M)
-            startXY = self.searchSepStart(gammas, M, 0.01)
+            startXY = self.searchSepStart(gammas, M, 0.0001)
 
             for s in range(4):
                 #h0 = 0.01
@@ -238,8 +238,8 @@ class FourOscillators:
                 #else:
                 #    lambdasi = lambdas[1]
                 #h = h0 * np.sign(lambdasi)
-                tmp = solve_ivp(self.getSystemT, (0, 100), [0, 0, startXY[0][s], startXY[1][s]], method='RK45',
-                                rtol=1e-10, atol=1e-10)
+                tmp = solve_ivp(self.getSystemT, (0, 50), [0, 0, startXY[0][s], startXY[1][s]], method='RK45')
+                                #rtol=1e-8, atol=1e-8)
                 for j in range(len(saddles)):
                     if i == j:
                         continue
@@ -262,11 +262,11 @@ class FourOscillators:
             gammas = self.searchGammas(lambdas, M)
             startXY = self.searchSepStart(gammas, M, 0.01)
             flag = 0
-            T = self.funcT(M)
+            T = self.funcT([cycles[i][0][0], cycles[i][0][1]])
 
             for s in range(4):
-                tmp = solve_ivp(self.getSystemT, (0, 100), [0., 0., startXY[0][s], startXY[1][s]], method='RK45',
-                                rtol=1e-10, atol=1e-10)
+                tmp = solve_ivp(self.getSystemT, (0, 50), [0., 0., startXY[0][s], startXY[1][s]], method='RK45')
+                                #rtol=1e-10, atol=1e-10)
                 for j in range(len(cycles)):
                     if i == j:
                         continue
@@ -274,7 +274,7 @@ class FourOscillators:
                         for k in range(4):
                             if math.sqrt(
                                     (tmp.y[2][l] - T[0]**k) ** 2 + (tmp.y[3][l] - T[1]**k) ** 2) <= param:
-                                res.append([cycles[i][0], cycles[i][1], [cycles[j][1][3] ** k, (2 * math.pi) ** k]])
+                                res.append([cycles[i][0], cycles[i][1], [cycles[j][0][1] ** k, (2 * math.pi) ** k]])
                                 flag = 1
                                 break
                         if flag == 1:
@@ -285,7 +285,7 @@ class FourOscillators:
 
 def checkSystemParam(paramE, paramX):
     res = False
-    system = FourOscillators(-0.3, 0.3, 0.02, 0.8, 0.02, paramE, paramX, 0., 1.73, 0., 0.8)
+    system = FourOscillators(-0.3, 0.3, 0.02, 0.8, 0.02, paramE, paramX, 0., 1.73, 0., 1.)
     cons = ({'type': 'ineq', 'fun': ineqConstr},
             {'type': 'ineq', 'fun': system.ineqConstrF},
             {'type': 'ineq', 'fun': system.ineqConstrF2})
@@ -316,22 +316,25 @@ def makePictureParam(startX, stopX):
     x = []
     y = []
 
-    for i in range(startX, stopX + 1, 100):
-        for j in range(startX, stopX + 1, 100):
-            i = i / 100
+    for i in range(0, 200 + 1, 10):
+        i = i / 100
+        for j in range(300, 510 + 1, 10):
             j = j / 100
             if checkSystemParam(i, j):
                 x.append(i)
                 y.append(j)
 
-    axs.scatter(x, y)
+    axs.scatter(x, y, s=1, c='black')
 
-    axs.set_xlim((startX, stopX))
-    axs.set_ylim((startX, stopX))
+    axs.set_xlim((0., 2.))
+    axs.set_ylim((3., 5.1))
+    axs.set(xlabel='X1')
+    axs.set(ylabel='X2')
     plt.show()
 
 
-fig, axs = plt.subplots()
+fig = plt.figure(figsize=(4, 4))
+axs = fig.add_subplot()
 args = (1.8, 0.6, 1.7, 0.3, 1.5, 0.1, 1.4, 0.9, 1.2, 0.3, 2.4)
 system = FourOscillators(0., -4.6, -4.6, -4.6, -4.6, -4.6, 3.4, 3.4, 3.4, 3.4, 3.4)
 constraint1 = {'type': 'ineq', 'fun': ineqConstr}
@@ -349,4 +352,4 @@ bounds = ((0, pi2), (0, pi2))
 #cycles1 = system.searchCycles1(res.xl, 0.8)
 #cycles2 = system.searchCycles2(cycles1, )
 
-makePictureParam(-629, 629)
+makePictureParam(100, 350)
