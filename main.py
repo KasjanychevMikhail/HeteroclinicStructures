@@ -238,7 +238,7 @@ class FourOscillators:
                 #else:
                 #    lambdasi = lambdas[1]
                 #h = h0 * np.sign(lambdasi)
-                tmp = solve_ivp(self.getSystemT, (0, 50), [0, 0, startXY[0][s], startXY[1][s]], method='RK45')
+                tmp = solve_ivp(self.getSystemT, (0, 60), [0, 0, startXY[0][s], startXY[1][s]], method='RK45')
                                 #rtol=1e-8, atol=1e-8)
                 for j in range(len(saddles)):
                     if i == j:
@@ -265,7 +265,7 @@ class FourOscillators:
             T = self.funcT([cycles[i][0][0], cycles[i][0][1]])
 
             for s in range(4):
-                tmp = solve_ivp(self.getSystemT, (0, 50), [0., 0., startXY[0][s], startXY[1][s]], method='RK45')
+                tmp = solve_ivp(self.getSystemT, (0, 60), [0., 0., startXY[0][s], startXY[1][s]], method='RK45')
                                 #rtol=1e-10, atol=1e-10)
                 for j in range(len(cycles)):
                     if i == j:
@@ -282,6 +282,46 @@ class FourOscillators:
                             break
         return res
 
+    def searchLyapunovExp(self, startX):
+        startY = solve_ivp(self.getSystemT, (0, 1000), [0., startX[0], startX[1], startX[2]], method='RK45')
+        start = [0., 0., 0., 0.]
+        start[1] = startY.y[1][len(startY.y[1]) - 1]
+        start[2] = startY.y[2][len(startY.y[2]) - 1]
+        start[3] = startY.y[3][len(startY.y[3]) - 1]
+        tmp = 0.
+        starttmp = [0., 0., 0., 0]
+        starttmp[1] = start[1] + 1.
+        starttmp[2] = start[2] + 1.
+        starttmp[3] = start[3] + 1.
+        for i in range(50):
+            dxy = solve_ivp(self.getSystemT, (0, 5), start, method='RK45')
+            dxky = solve_ivp(self.getSystemT, (0, 5), starttmp, method='RK45')
+            dx = [0., 0., 0., 0.]
+            dxk = [0., 0., 0., 0.]
+            dx[1] = dxy.y[1][len(dxy.y[1]) - 1]
+            dx[2] = dxy.y[2][len(dxy.y[2]) - 1]
+            dx[3] = dxy.y[3][len(dxy.y[3]) - 1]
+            dxk[1] = dxky.y[1][len(dxky.y[1]) - 1]
+            dxk[2] = dxky.y[2][len(dxky.y[2]) - 1]
+            dxk[3] = dxky.y[3][len(dxky.y[3]) - 1]
+            dis = math.sqrt((dx[1] - dxk[1])**2 + (dx[2] - dxk[2])**2 + (dx[3] - dxk[3])**2)
+            div = dis - 1
+            start = dx
+            starttmp[1] = dxk[1] - div
+            starttmp[2] = dxk[2] - div
+            starttmp[3] = dxk[3] - div
+            tmp += math.log(dis)
+
+        res = 1 / 250 * tmp
+        return res
+
+def checkLyapunovExp(paramX1, paramX2):
+    system = FourOscillators(-0.3, 0.3, 0.02, 0.8, 0.02, paramX1, paramX2, 0., 1.73, 0., 1.)
+    exp = system.searchLyapunovExp([0., 0.5, 0.8, 0.3])
+    if exp > 0:
+        return True
+    else:
+        return False
 
 def checkSystemParam(paramE, paramX):
     res = False
@@ -315,16 +355,29 @@ def funcF(psis, *args):
 def makePictureParam(startX, stopX):
     x = []
     y = []
+    xr = []
+    yr = []
+    xb = []
+    yb = []
 
     for i in range(0, 200 + 1, 10):
         i = i / 100
         for j in range(300, 510 + 1, 10):
             j = j / 100
-            if checkSystemParam(i, j):
-                x.append(i)
-                y.append(j)
+            #if checkSystemParam(i, j):
+                #x.append(i)
+                #y.append(j)
+            if checkLyapunovExp(i, j):
+                xr.append(i)
+                yr.append(j)
+            else:
+                xb.append(i)
+                yb.append(j)
 
-    axs.scatter(x, y, s=1, c='black')
+    #axs.scatter(xw, yw, c='white')
+    axs.scatter(xb, yb, c='blue', s=70)
+    axs.scatter(xr, yr, c='red', s=70)
+    axs.scatter(x, y, c='black', s=50)
 
     axs.set_xlim((0., 2.))
     axs.set_ylim((3., 5.1))
