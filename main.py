@@ -371,10 +371,10 @@ def makePictureParam(startX, stopX):
     xb = []
     yb = []
 
-    for i in range(0, 200 + 1, 10):
-        paramX1 = i / 1000
-        for j in range(300, 500 + 1, 10):
-            paramX2 = j / 1000
+    for i in range(0, 200 + 1, 20):
+        paramX1 = i / 100
+        for j in range(300, 500 + 1, 20):
+            paramX2 = j / 100
             if checkSystemParam(paramX1, paramX2):
                 x.append(paramX1)
                 y.append(paramX2)
@@ -390,14 +390,14 @@ def makePictureParam(startX, stopX):
     axs.scatter(xr, yr, c='red', s=300)
     axs.scatter(x, y, c='black', s=50)
 
-    axs.set_xlim((0., 0.2))
+    axs.set_xlim((0., 2.))
     axs.set_ylim((3., 5.))
     axs.set(xlabel='X1')
     axs.set(ylabel='X2')
     plt.show()
 
 
-fig = plt.figure(figsize=(5, 5))
+fig = plt.figure(figsize=(7, 7))
 axs = fig.add_subplot()
 args = (1.8, 0.6, 1.7, 0.3, 1.5, 0.1, 1.4, 0.9, 1.2, 0.3, 2.4)
 system = FourOscillators(0., -4.6, -4.6, -4.6, -4.6, -4.6, 3.4, 3.4, 3.4, 3.4, 3.4)
