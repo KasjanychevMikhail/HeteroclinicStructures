@@ -213,8 +213,8 @@ class FourOscillators:
         res = []
         for i in range(len(saddles)):
             M = [0., 0.]
-            M[0] = saddles[i][2]
-            M[1] = saddles[i][3]
+            M[0] = saddles[i][0]
+            M[1] = saddles[i][1]
             abcd = self.searchABCD(M)
             lambdas = self.searchLambdas(abcd[0], abcd[1], abcd[2], abcd[3])
             if lambdas[0] != -10000 and lambdas[1] != -10000:
@@ -226,7 +226,6 @@ class FourOscillators:
         res = list(range(0))
         for i in range(len(saddles)):
             M = [0., 0.]
-            #saddles[i] = [0., 0., saddles[i][0], saddles[i][1]]
             M[0] = saddles[i][0]
             M[1] = saddles[i][1]
             abcd = self.searchABCD(M)
@@ -235,15 +234,7 @@ class FourOscillators:
             startXY = self.searchSepStart(gammas, M, 0.0001)
 
             for s in range(4):
-                #h0 = 0.01
-                #lambdasi = 0.
-                #if s == 0 or s == 2:
-                #    lambdasi = lambdas[0]
-                #else:
-                #    lambdasi = lambdas[1]
-                #h = h0 * np.sign(lambdasi)
                 tmp = solve_ivp(self.getSystemT, (0, 200), [0., 0., startXY[0][s], startXY[1][s]], method='RK45', first_step=0.5)
-                                #rtol=1e-8, atol=1e-8)
                 for j in range(len(saddles)):
                     if i == j:
                         continue
@@ -269,16 +260,12 @@ class FourOscillators:
 
             for s in range(4):
                 tmp = solve_ivp(self.getSystemT, (0, 200), [0., 0., startXY[0][s], startXY[1][s]], method='RK45', first_step=0.5)
-                                #rtol=1e-10, atol=1e-10)
                 for j in range(len(cycles)):
                     if i == j:
                         continue
                     for l in range(len(tmp.y[2])):
                         for k in range(4):
                             T = self.funcT([0., 0., cycles[i][0][0], cycles[i][0][1]], k)
-                            #tmp1 = tmp.y[1][len(tmp.y[1]) - 1]
-                            #tmp2 = tmp.y[2][len(tmp.y[2]) - 1]
-                            #tmp3 = tmp.y[3][len(tmp.y[3]) - 1]
                             if math.sqrt((tmp.y[2][l] - T[2]) ** 2 + (tmp.y[3][l] - T[3]) ** 2) <= param:
                                 res.append([cycles[i][0], cycles[i][1], T[2], T[3]])
                                 flag = 1
@@ -334,9 +321,9 @@ def checkLyapunovExp(paramX1, paramX2):
     else:
         return False
 
-def checkSystemParam(paramE, paramX):
+def checkSystemParam(paramX1, paramX2):
     res = False
-    system = FourOscillators(-0.3, 0.3, 0.02, 0.8, 0.02, paramE, paramX, 0., 1.73, 0., 1.)
+    system = FourOscillators(-0.3, 0.3, 0.02, 0.8, 0.02, paramX1, paramX2, 0., 1.73, 0., 1.)
     cons = ({'type': 'ineq', 'fun': ineqConstr},
             {'type': 'ineq', 'fun': system.ineqConstrF},
             {'type': 'ineq', 'fun': system.ineqConstrF2})
@@ -345,7 +332,8 @@ def checkSystemParam(paramE, paramX):
     minS = shgo(system.funcF, bounds=bounds, n=64, iters=3, constraints=cons, options={'minim_every_item': 'True'})
     if minS.success:
         min = minS.xl
-        cyc1 = system.searchCycles1(min, 0.5)
+        minX = system.checkLambdas(min)
+        cyc1 = system.searchCycles1(minX, 0.5)
         if len(cyc1) >= 1:
             cyc2 = system.searchCycles2(cyc1, 0.5)
             if len(cyc2) >= 1:
@@ -356,14 +344,7 @@ def ineqConstr(psis):
     psis = list(psis)
     return psis[1] - psis[0]
 
-def funcF(psis, *args):
-    psisx = [0., 0., psis[0], psis[1]]
-    system = FourOscillators(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
-    sys = system.getSystem(psisx)
-    Fx = sys[2] ** 2 + sys[3] ** 2
-    return Fx
-
-def makePictureParam(startX, stopX):
+def makePictureParam(startX, stopX, startY, stopY):
     x = []
     y = []
     xr = []
@@ -371,9 +352,9 @@ def makePictureParam(startX, stopX):
     xb = []
     yb = []
 
-    for i in range(0, 200 + 1, 20):
+    for i in range(startX, stopX + 1, 20):
         paramX1 = i / 100
-        for j in range(300, 500 + 1, 20):
+        for j in range(startY, stopY + 1, 20):
             paramX2 = j / 100
             if checkSystemParam(paramX1, paramX2):
                 x.append(paramX1)
@@ -385,13 +366,12 @@ def makePictureParam(startX, stopX):
                 xb.append(paramX1)
                 yb.append(paramX2)
 
-    #axs.scatter(xw, yw, c='white')
     axs.scatter(xb, yb, c='blue', s=300)
     axs.scatter(xr, yr, c='red', s=300)
     axs.scatter(x, y, c='black', s=50)
 
-    axs.set_xlim((0., 2.))
-    axs.set_ylim((3., 5.))
+    axs.set_xlim((startX / 100, stopX / 100))
+    axs.set_ylim((startY / 100, stopY / 100))
     axs.set(xlabel='X1')
     axs.set(ylabel='X2')
     plt.show()
@@ -399,21 +379,4 @@ def makePictureParam(startX, stopX):
 
 fig = plt.figure(figsize=(7, 7))
 axs = fig.add_subplot()
-args = (1.8, 0.6, 1.7, 0.3, 1.5, 0.1, 1.4, 0.9, 1.2, 0.3, 2.4)
-system = FourOscillators(0., -4.6, -4.6, -4.6, -4.6, -4.6, 3.4, 3.4, 3.4, 3.4, 3.4)
-constraint1 = {'type': 'ineq', 'fun': ineqConstr}
-constraint2 = {'type': 'ineq', 'fun': system.ineqConstrF}
-cons = ({'type': 'ineq', 'fun': ineqConstr},
-        {'type': 'ineq', 'fun': system.ineqConstrF},
-        {'type': 'ineq', 'fun': system.ineqConstrF2})
-pi2 = 2 * math.pi
-bounds = ((0, pi2), (0, pi2))
-#res = shgo(system.funcF, bounds=bounds, n=64, iters=3, constraints=cons, options={'minim_every_item': 'True'})
-#ABCD = system.searchABCD(res.xl[3])
-#lambdas = system.searchLambdas(ABCD[0], ABCD[1], ABCD[2], ABCD[3])
-#gammas = system.searchGammas(lambdas, res.xl[1])
-#startXY = system.searchSepStart(gammas, res.xl[1], 0.5)
-#cycles1 = system.searchCycles1(res.xl, 0.8)
-#cycles2 = system.searchCycles2(cycles1, )
-
-makePictureParam(100, 350)
+makePictureParam(0, 200, 300, 500)
